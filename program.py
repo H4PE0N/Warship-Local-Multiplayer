@@ -5,8 +5,8 @@ import sys as system
 address = "127.0.0.1"
 port = 5555
 
-height = 10
-width = 10
+height = 5
+width = 5
 
 def main(argc, argv):
     if(argv[1] == "server"):
@@ -26,35 +26,109 @@ def main(argc, argv):
         client_game_loop(sock_object, boats, def_board, off_board)
 
 defeated = False
+won = False
 
 def server_game_loop(sock_object, boats, def_board, off_board):
-    global defeated
-    while(not defeated):
+    global defeated, won
+    while(not defeated and not won):
         display_playing_boards(def_board, off_board)
-
-        position = input_shooting_position("INPUT")
-        sock_object.send(position.encode("utf-8"))
-
-        protocol = sock_object.recv(1024).decode("utf-8")
-        if(protocol == "defeated"):
+        off_board = attack_opponent_position(sock_object, off_board)
+        if(won):
             break
 
-        off_board = mark_protocol_positions(off_board, protocol)
+        display_playing_boards(def_board, off_board)
+        def_board = take_opponent_damage(sock_object, def_board, boats)
+        if(defeated):
+            break
 
     display_playing_boards(def_board, off_board)
 
     if(defeated):
         print("defeated")
-    else:
+    elif(won):
         print("won")
+
+def client_game_loop(sock_object, boats, def_board, off_board):
+    global defeated, won
+    while(not defeated and not won):
+        display_playing_boards(def_board, off_board)
+        def_board = take_opponent_damage(sock_object, def_board, boats)
+        if(defeated):
+            break
+
+        display_playing_boards(def_board, off_board)
+        off_board = attack_opponent_position(sock_object, off_board)
+        if(won):
+            break
+
+    display_playing_boards(def_board, off_board)
+
+    if(defeated):
+        print("defeated")
+    elif(won):
+        print("won")
+
+def attack_opponent_position(sock_object, off_board):
+    global won
+    position = input_shooting_position("INPUT")
+    sock_object.send(position.encode("utf-8"))
+
+    protocol = sock_object.recv(1024).decode("utf-8")
+    if(protocol.split(":")[0] == "defeated"):
+        won = True;
+
+    off_board = mark_protocol_positions(off_board, protocol)
+    return off_board
+
+def take_opponent_damage(sock_object, def_board, boats):
+    global defeated
+    position = sock_object.recv(1024).decode("utf-8")
+    position = decode_position_object(position)
+
+    def_board = mark_board_postion(def_board, boats, position)
+
+    hit_boat = hit_defence_boat(def_board, boats, position)
+
+    if(hit_boat):
+        if(defence_boat_defeated(def_board, hit_boat)):
+            def_board = mark_boat_sunken(def_board, hit_boat)
+
+            if(defence_board_defeated(def_board, boats)):
+                protocol = generate_protocol(hit_boat, position, "defeated")
+                sock_object.send(protocol.encode("utf-8"))
+                defeated = True; return def_board # else will be trouble
+
+            else:
+                protocol = generate_protocol(hit_boat, position, "sunken")
+                sock_object.send(protocol.encode("utf-8"))
+
+        else:
+            protocol = generate_protocol(hit_boat, position, "hit")
+            sock_object.send(protocol.encode("utf-8"))
+
+    else:
+        protocol = generate_protocol(hit_boat, position, "miss")
+        sock_object.send(protocol.encode("utf-8"))
+
+    return def_board
 
 def mark_protocol_positions(off_board, protocol):
     action = protocol.split(":")[0]
     positions = extract_protocol_positions(protocol)
-    for position in positions:
-        h_index = position[0]
-        w_index = position[1]
-        off_board[h_index][w_index] = '?'
+
+    if(action == "sunken" or action == "defeated"):
+        off_board = mark_boat_sunken(off_board, positions) # SUNKEN
+        return off_board
+
+    h_index = positions[0][0]
+    w_index = positions[0][1]
+
+    if(action == "hit"):
+        off_board[h_index][w_index] = 'X' # HIT
+
+    if(action == "miss"):
+        off_board[h_index][w_index] = '¤' # MISS
+
     return off_board
 
 def extract_protocol_positions(protocol):
@@ -64,48 +138,8 @@ def extract_protocol_positions(protocol):
         positions[index] = decode_position_object(position)
     return positions
 
-def client_game_loop(sock_object, boats, def_board, off_board):
-    global defeated
-    while(not defeated):
-        display_playing_boards(def_board, off_board)
-
-        position = sock_object.recv(1024).decode("utf-8")
-        position = decode_position_object(position)
-
-        def_board = mark_board_postion(def_board, boats, position)
-
-        hit_boat = hit_defence_boat(def_board, boats, position)
-
-        if(hit_boat):
-            if(defence_boat_defeated(def_board, hit_boat)):
-                def_board = mark_boat_sunken(def_board, hit_boat)
-
-                if(defence_board_defeated(def_board, boats)):
-                    sock_object.send("defeated".encode("utf-8"))
-                    defeated = True; break
-
-                else:
-                    protocol = generate_protocol(hit_boat, position, "sunken")
-                    sock_object.send(protocol.encode("utf-8"))
-
-            else:
-                protocol = generate_protocol(hit_boat, position, "hit")
-                sock_object.send(protocol.encode("utf-8"))
-
-        else:
-            protocol = generate_protocol(hit_boat, position, "miss")
-            sock_object.send(protocol.encode("utf-8"))
-
-
-    display_playing_boards(def_board, off_board)
-
-    if(defeated):
-        print("defeated")
-    else:
-        print("won")
-
 def generate_protocol(boat, position, action):
-    if(action == "sunken"):
+    if(action == "sunken" or action == "defeated"):
         positions = []
         for coordinate in boat:
             positions.append(",".join(map(str, coordinate)))
@@ -158,7 +192,7 @@ def mark_board_postion(def_board, boats, position):
             if(coordinate == position):
                 def_board[h_index][w_index] = "X" # HIT
                 return def_board
-    def_board[h_index][w_index] = "¤" # HIT
+    def_board[h_index][w_index] = "¤" # MISS
     return def_board
 
 def encode_position_object(position):
