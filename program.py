@@ -2,7 +2,7 @@
 from socket import *
 import sys as system
 
-address = "127.0.0.1"
+address = "192.168.1.113"
 port = 5555
 
 height = 5
@@ -127,7 +127,7 @@ def mark_protocol_positions(off_board, protocol):
         off_board[h_index][w_index] = 'X' # HIT
 
     if(action == "miss"):
-        off_board[h_index][w_index] = '¤' # MISS
+        off_board[h_index][w_index] = '%' # MISS
 
     return off_board
 
@@ -192,7 +192,7 @@ def mark_board_postion(def_board, boats, position):
             if(coordinate == position):
                 def_board[h_index][w_index] = "X" # HIT
                 return def_board
-    def_board[h_index][w_index] = "¤" # MISS
+    def_board[h_index][w_index] = "%" # MISS
     return def_board
 
 def encode_position_object(position):
