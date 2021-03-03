@@ -120,8 +120,8 @@ def decode_board_coordinates(coordinates):
 def decode_board_coordinate(coordinate):
     try:
         letter = coordinate[0].upper()
-        w_index = int(string.ascii_uppercase.index(letter))
-        h_index = int(coordinate[1:]) - 1
+        h_index = int(string.ascii_uppercase.index(letter))
+        w_index = int(coordinate[1:]) - 1
     except:
         return None
 
