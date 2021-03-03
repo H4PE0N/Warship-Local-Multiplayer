@@ -96,6 +96,9 @@ def all_battleship_coordinates(battleship):
 
 def input_battleship_position(battleships, ship_number, size):
     input_message = ("BATTLESHIP #%d [SIZE: %d]: " % (ship_number, size))
+    if(input_message.upper() == "EXIT"):
+        system.exit("EXIT")
+
     battleship = str(input(input_message)).strip().split(" ")
     battleship = decode_board_coordinates(battleship)
     if(battleship == None):
@@ -446,7 +449,7 @@ if(__name__ == "__main__"):
     sock_object, def_board, off_board, battleships = setup_battleship_information(socket_role)
 
     if(socket_role == "SERVER"):
-        def_board, off_board, defeated, won = off_boardserver_battleship_game(sock_object, def_board, off_board, battleships)
+        def_board, off_board, defeated, won = server_battleship_game(sock_object, def_board, off_board, battleships)
     elif(socket_role == "CLIENT"):
         def_board, off_board, defeated, won = client_battleship_game(sock_object, def_board, off_board, battleships)
 
