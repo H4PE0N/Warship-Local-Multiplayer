@@ -85,8 +85,11 @@ def input_battleship_position(battleships, ship_number, size):
     if(user_input.upper() == "EXIT" or user_input.upper() == "QUIT"):
         throw_error_quit("EXIT")
     battleship = user_input.split(" ")
+    if(len(battleship) != 2):
+        return input_battleship_position(battleships, ship_number, size)
 
     battleship = decode_board_coordinates(battleship)
+    
     if(battleship == None):
         return input_battleship_position(battleships, ship_number, size)
 
