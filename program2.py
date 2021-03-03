@@ -69,6 +69,15 @@ def all_battleship_coordinates(battleship):
             coordinates.append([h_index, w_index])
     return coordinates
 
+def flip_battleship_coordinates(battleship):
+    height_result = (battleship[0][0] > battleship[1][0])
+    width_result = (battleship[0][1] > battleship[1][1])
+    if(height_result == True or width_result == True):
+        temp_coordinate = battleship[0]
+        battleship[0] = battleship[1]
+        battleship[1] = temp_coordinate
+    return battleship
+
 def input_battleship_position(battleships, ship_number, size):
     input_message = ("BATTLESHIP #%d [SIZE: %d]: " % (ship_number, size))
 
@@ -81,15 +90,16 @@ def input_battleship_position(battleships, ship_number, size):
     if(battleship == None):
         return input_battleship_position(battleships, ship_number, size)
 
-    height_size = abs(battleship[0][0] - battleship[1][0])
-    width_size = abs(battleship[0][1] - battleship[1][1])
+    battleship = flip_battleship_coordinates(battleship)
+
+    height_size = (battleship[1][0] - battleship[0][0])
+    width_size = (battleship[1][1] - battleship[0][1])
     total_size = (height_size + 1) * (width_size + 1)
 
     if(total_size == size and battleship_position_valid(battleships, battleship)):
         return battleship
 
-    position = input_battleship_position(battleships, ship_number, size)
-    return position
+    return input_battleship_position(battleships, ship_number, size)
 
 def decode_board_coordinates(coordinates):
     for index in range(len(coordinates)):
@@ -194,7 +204,7 @@ def generate_battleship_board(height, width):
     return battleship_board
 
 def server_battleship_game(sock_object, def_board, off_board, battleships, defeated, won):
-    while(not defeated and not won):
+    while(defeated == False and won == False):
         display_battleship_boards(def_board, off_board)
         off_board, won = attack_opponent_coordinate(sock_object, off_board, won)
         if(won == True):
@@ -204,7 +214,7 @@ def server_battleship_game(sock_object, def_board, off_board, battleships, defea
     return def_board, off_board, defeated, won
 
 def client_battleship_game(sock_object, def_board, off_board, battleships, defeated, won):
-    while(not defeated and not won):
+    while(defeated == False and won == False):
         display_battleship_boards(def_board, off_board)
         def_board, defeated = register_opponents_damage(sock_object, def_board, battleships, defeated)
         if(defeated == True):
@@ -278,7 +288,7 @@ def send_attacking_coordinate(sock_object):
         coordinate = input_attacking_coordinate()
 
     encoded = encode_coordinate_object(coordinate)
-    if(not send_socket_string(sock_object, encoded)):
+    if(send_socket_string(sock_object, encoded) == False):
         throw_error_quit("Error while sending attacking coordinate")
 
 def receive_opponents_protocol(sock_object):
@@ -348,25 +358,25 @@ def register_opponents_damage(sock_object, def_board, battleships, defeated):
 
 def send_miss_protocol(sock_object, def_board, defeated, coordinate):
     protocol = generate_socket_protocol("MISS", [coordinate])
-    if(not send_socket_string(sock_object, protocol)):
+    if(send_socket_string(sock_object, protocol) == False):
         throw_error_quit("error while sending protocol")
     return def_board, defeated
 
 def send_hit_protocol(sock_object, def_board, defeated, coordinate):
     protocol = generate_socket_protocol("HIT", [coordinate])
-    if(not send_socket_string(sock_object, protocol)):
+    if(send_socket_string(sock_object, protocol) == False):
         throw_error_quit("error while sending protocol")
     return def_board, defeated
 
 def send_defeated_protocol(sock_object, def_board, defeated, hit_ship):
     protocol = generate_socket_protocol("DEFEATED", hit_ship)
-    if(not send_socket_string(sock_object, protocol)):
+    if(send_socket_string(sock_object, protocol) == False):
         throw_error_quit("error while sending protocol")
     defeated = True; return def_board, defeated
 
 def send_sunken_protocol(sock_object, def_board, defeated, hit_ship):
     protocol = generate_socket_protocol("SUNKEN", hit_ship)
-    if(not send_socket_string(sock_object, protocol)):
+    if(send_socket_string(sock_object, protocol) == False):
         throw_error_quit("error while sending protocol")
     return def_board, defeated
 
@@ -375,11 +385,11 @@ def send_registerd_damage(sock_object, def_board, battleships, coordinate, defea
     if(hit_ship == None):
         return send_miss_protocol(sock_object, def_board, defeated, coordinate)
 
-    if(not defence_ship_defeated(def_board, hit_ship)):
+    if(defence_ship_defeated(def_board, hit_ship) == False):
         return send_hit_protocol(sock_object, def_board, defeated, coordinate)
 
     def_board = mark_battleship_sunken(def_board, hit_ship)
-    if(defence_board_defeated(def_board, battleships)):
+    if(defence_board_defeated(def_board, battleships) == True):
         return send_defeated_protocol(sock_object, def_board, defeated, hit_ship)
 
     return send_sunken_protocol(sock_object, def_board, defeated, hit_ship)
@@ -398,7 +408,7 @@ def defence_ship_defeated(def_board, battleship):
 def defence_board_defeated(def_board, battleships):
     for index in range(len(battleships)):
         battleship = battleships[index]
-        if(not defence_ship_defeated(def_board, battleship)):
+        if(defence_ship_defeated(def_board, battleship) == False):
             return False
     return True
 
