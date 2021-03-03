@@ -78,7 +78,7 @@ def input_battleships_position(def_board):
 def battleship_position_valid(battleships, battleship):
     battleship_cords = all_battleship_coordinates(battleship)
     for index in range(len(battleships)):
-        current_cords = all_battleship_coordinates(battleship[index])
+        current_cords = all_battleship_coordinates(battleships[index])
         for cords_index in range(len(current_cords)):
             if(current_cords[cords_index] in battleship_cords):
                 return False
@@ -107,11 +107,12 @@ def input_battleship_position(battleships, ship_number, size):
     if(total_size == size and battleship_position_valid(battleships, battleship)):
         return battleship
 
-    return input_battleship_position(battleships, ship_number, size)
+    position = input_battleship_position(battleships, ship_number, size)
+    return position
 
 def decode_board_coordinates(coordinates):
     for index in range(len(coordinates)):
-        coordinate = coordinates[index]
+        coordinate = coordinates[index].upper()
         coordinates[index] = decode_board_coordinate(coordinate)
         if(coordinates[index] == None):
             return None
