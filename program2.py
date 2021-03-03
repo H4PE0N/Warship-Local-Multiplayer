@@ -9,22 +9,34 @@ BOARD_HEIGHT = 10
 BOARD_WIDTH = 10
 
 def input_socket_information():
-    #terminal.system("clear")
-    #address = str(input("ADDRESS: "))
-    #port = str(input("PORT: "))
-    #return [address, port]
-    return ["192.168.1.113", "5555"]
+    address = str(input("ADDRESS: "))
+    if(address.upper() == "EXIT"):
+        print("address was exit")
+        system.exit("")
+    try:
+        port = int(input("PORT: "))
+    except:
+        print("the port must be an integer")
+        return input_socket_information()
+    return [str(address), str(port)]
+    #return ["192.168.1.113", "5555"]
 
-def setup_socket_information(socket_role):
+def setup_client_information():
     information = input_socket_information()
     address = information[0]; port = int(information[1])
-    if(socket_role.upper() == "SERVER"):
-        sock_object = generate_server_socket(address, port)
-    elif(socket_role.upper() == "CLIENT"):
-        sock_object = generate_client_socket(address, port)
-    if(sock_object != None):
-        return sock_object
-    system.exit("THE SOCKET WAS NOT CREATED")
+    sock_object = generate_client_socket(address, port)
+    if(sock_object == None):
+        system.exit("the address or port was wrong")
+    return sock_object
+
+def setup_server_information():
+    information = input_socket_information()
+    address = information[0]; port = int(information[1])
+    sock_object = generate_server_socket(address, port)
+    if(sock_object == None):
+        print("the address or port was wrong")
+        return setup_server_information()
+    return sock_object
 
 def generate_server_socket(address, port):
     serv_sock = socket(AF_INET, SOCK_STREAM)
@@ -122,16 +134,28 @@ def decode_board_coordinate(coordinate):
 
 def setup_battleship_information(socket_role):
     global BOARD_HEIGHT, BOARD_WIDTH
-    sock_object = setup_socket_information(socket_role)
+    terminal.system("clear")
+
+    if(socket_role.upper() == "SERVER"):
+        sock_object = setup_server_information()
+    elif(socket_role.upper() == "CLIENT"):
+        sock_object = setup_client_information()
+
     off_board = generate_battleship_board(BOARD_HEIGHT, BOARD_WIDTH)
+    if(off_board == None):
+        system.exit("OFF BOARD CREATION FAILED")
     def_board = generate_battleship_board(BOARD_HEIGHT, BOARD_WIDTH)
+    if(off_board == None):
+        system.exit("DEF BOARD CREATION FAILED")
     #battleships, def_board = input_battleships_position(def_board)
 
     battleships = [[[0, 0], [0, 1]], [[2, 1], [2, 3]], [[4, 3], [4, 5]], [[6, 1], [6, 4]], [[8, 3], [8, 7]]]
-    for battleship in battleships:
-        all_cords = all_battleship_coordinates(battleship)
-        for coordinate in all_cords:
-            def_board[coordinate[0]][coordinate[1]] = "BATTLESHIP"
+    for index in range(len(battleships)):
+        all_cords = all_battleship_coordinates(battleships[index])
+        for cords_index in range(len(all_cords)):
+            h_index = all_cords[cords_index][0]
+            w_index = all_cords[cords_index][1]
+            def_board[h_index][w_index] = "BATTLESHIP"
 
     display_battleship_boards(def_board, off_board)
     if(socket_role == "SERVER"):
@@ -166,6 +190,8 @@ def server_battleship_game(sock_object, def_board, off_board, battleships):
         print("defeated")
     elif(won):
         print("won")
+    else:
+        system.exit("NEITHER WON OR DEFEATED")
 
 def client_battleship_game(sock_object, def_board, off_board, battleships):
     defeated = False
@@ -186,6 +212,8 @@ def client_battleship_game(sock_object, def_board, off_board, battleships):
         print("DEFEATED")
     elif(won):
         print("WON")
+    else:
+        system.exit("NEITHER WON OR DEFEATED")
 
 def input_attacking_coordinate(off_board):
     coordinate = input("INPUT COORDINATE: ").strip()
@@ -271,9 +299,17 @@ def hit_defence_battleship(def_board, battleships, coordinate):
             return copy(battleships[index])
     return None
 
+def receive_opponents_coordinate(sock_object):
+    decoded = None
+    try:
+        coordinate = sock_object.recv(1024).decode("utf-8")
+        decoded = decode_coordinate_object(coordinate)
+    except:
+        system.exit("error while receiving protocol")
+    return decoded
+
 def register_opponents_damage(sock_object, def_board, battleships, defeated):
-    coordinate = sock_object.recv(1024).decode("utf-8")
-    coordinate = decode_coordinate_object(coordinate)
+    coordinate = receive_opponents_coordinate(sock_object)
     def_board = register_opponents_coordinate(def_board, battleships, coordinate)
     hit_ship = hit_defence_battleship(def_board, battleships, coordinate)
 
@@ -327,36 +363,27 @@ def generate_socket_protocol(action, coordinates):
 
 def display_battleship_boards(def_board, off_board):
     global BOARD_HEIGHT, BOARD_WIDTH
-    print("   A B C D E F G H I J \tA B C D E F G H I J")
+    print("  1 2 3 4 5 6 7 8 9 10\t1 2 3 4 5 6 7 8 9 10")
     for h_index in range(BOARD_HEIGHT):
-        if(h_index + 1 == 10):
-            print(h_index + 1, end=" ")
-        else:
-            print(h_index + 1, end="  ")
-        for w_index in range(BOARD_WIDTH):
-            string = def_board[h_index][w_index]
-            marker = convert_string_marker(string)
-            print(marker, end=" ")
+        print(string.ascii_uppercase[h_index], end=" ")
+        display_board_width(def_board, h_index)
         print("\t", end="")
-        for w_index in range(BOARD_WIDTH):
-            string = off_board[h_index][w_index]
-            marker = convert_string_marker(string)
-            print(marker, end=" ")
+        display_board_width(off_board, h_index)
         print()
     return True
 
+def display_board_width(board, h_index):
+    for w_index in range(len(board[h_index])):
+        string = board[h_index][w_index]
+        marker = convert_string_marker(string)
+        print(marker, end=" ")
+
 def display_battleship_board(board):
     global BOARD_HEIGHT, BOARD_WIDTH
-    print("   A B C D E F G H I J")
-    for h_index in range(BOARD_HEIGHT):
-        if(h_index + 1 == 10):
-            print(h_index + 1, end=" ")
-        else:
-            print(h_index + 1, end="  ")
-        for w_index in range(BOARD_WIDTH):
-            string = board[h_index][w_index]
-            marker = convert_string_marker(string)
-            print(marker, end=" ")
+    print("   1 2 3 4 5 6 7 8 9 10")
+    for h_index in range(len(board)):
+        print(string.ascii_uppercase[h_index], end=" ")
+        display_board_width(board, h_index)
         print()
     return True
 
@@ -369,5 +396,8 @@ def convert_string_marker(string):
     return None
 
 if(__name__ == "__main__"):
-    socket_role = system.argv[1].upper()
+    try:
+        socket_role = system.argv[1].upper()
+    except:
+        system.exit("TO FEW ARGUMENTS")
     setup_battleship_information(socket_role)
