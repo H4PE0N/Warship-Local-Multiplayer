@@ -147,15 +147,15 @@ def setup_battleship_information(socket_role):
     def_board = generate_battleship_board(BOARD_HEIGHT, BOARD_WIDTH)
     if(off_board == None):
         system.exit("DEF BOARD CREATION FAILED")
-    #battleships, def_board = input_battleships_position(def_board)
+    battleships, def_board = input_battleships_position(def_board)
 
-    battleships = [[[0, 0], [0, 1]], [[2, 1], [2, 3]], [[4, 3], [4, 5]], [[6, 1], [6, 4]], [[8, 3], [8, 7]]]
-    for index in range(len(battleships)):
-        all_cords = all_battleship_coordinates(battleships[index])
-        for cords_index in range(len(all_cords)):
-            h_index = all_cords[cords_index][0]
-            w_index = all_cords[cords_index][1]
-            def_board[h_index][w_index] = "BATTLESHIP"
+    # battleships = [[[0, 0], [0, 1]], [[2, 1], [2, 3]], [[4, 3], [4, 5]], [[6, 1], [6, 4]], [[8, 3], [8, 7]]]
+    # for index in range(len(battleships)):
+    #     all_cords = all_battleship_coordinates(battleships[index])
+    #     for cords_index in range(len(all_cords)):
+    #         h_index = all_cords[cords_index][0]
+    #         w_index = all_cords[cords_index][1]
+    #         def_board[h_index][w_index] = "BATTLESHIP"
 
     display_battleship_boards(def_board, off_board)
     if(socket_role == "SERVER"):
