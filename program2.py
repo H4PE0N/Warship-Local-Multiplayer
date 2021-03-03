@@ -72,9 +72,10 @@ def all_battleship_coordinates(battleship):
 def input_battleship_position(battleships, ship_number, size):
     input_message = ("BATTLESHIP #%d [SIZE: %d]: " % (ship_number, size))
 
-    battleship = get_user_input(input_message).split(" ")
-    if(battleship.upper() == "EXIT" or battleship.upper() == "QUIT"):
+    user_input = get_user_input(input_message)
+    if(user_input.upper() == "EXIT" or user_input.upper() == "QUIT"):
         throw_error_quit("EXIT")
+    battleship = user_input.split(" ")
 
     battleship = decode_board_coordinates(battleship)
     if(battleship == None):
