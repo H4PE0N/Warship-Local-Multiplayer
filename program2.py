@@ -4,13 +4,14 @@ import sys as system
 import os as terminal
 import string
 from copy import *
+from random import *
 
 #############################################################
 
-def check_input_exit(input_string):
+def check_input_exit(input_string, exit_message):
     exit_strings = ["QUIT", "EXIT", "LEAVE"]
     if(input_string.upper() in exit_strings):
-        throw_error_quit("")
+        throw_error_quit(exit_message)
 
 def send_socket_string(sock_object, sending_string):
     try:
@@ -78,18 +79,10 @@ def flip_battleship_coordinates(battleship):
         battleship[1] = temp_coordinate
     return battleship
 
-def input_battleship_position(battleships, ship_number, size):
-    input_message = ("BATTLESHIP #%d [SIZE: %d]: " % (ship_number, size))
-
-    user_input = get_user_input(input_message)
-    if(user_input.upper() == "EXIT" or user_input.upper() == "QUIT"):
-        throw_error_quit("EXIT")
-    battleship = user_input.split(" ")
-    if(len(battleship) != 2):
-        return input_battleship_position(battleships, ship_number, size)
+def generate_inputed_battleship(battleships, ship_number, size, battleship):
 
     battleship = decode_board_coordinates(battleship)
-    
+
     if(battleship == None):
         return input_battleship_position(battleships, ship_number, size)
 
@@ -99,10 +92,49 @@ def input_battleship_position(battleships, ship_number, size):
     width_size = (battleship[1][1] - battleship[0][1])
     total_size = (height_size + 1) * (width_size + 1)
 
-    if(total_size == size and battleship_position_valid(battleships, battleship)):
-        return battleship
+    valid_pos = battleship_position_valid(battleships, battleship)
+    if(total_size != size or valid_pos == False):
+        return input_battleship_position(battleships, ship_number, size)
 
-    return input_battleship_position(battleships, ship_number, size)
+    return battleship
+
+def generate_random_battleship(battleships, size):
+    height_range = (10 - size - 1)
+    width_range = (10 - size - 1)
+
+    first_cord = [randint(0, height_range), randint(0, width_range)]
+
+    if(randint(1, 2) == 1): # flipping a coin (horizontal or vertical)
+        second_cord = [first_cord[0], first_cord[1] + size - 1]
+    else:
+        second_cord = [first_cord[0] + size - 1, first_cord[1]]
+
+    battleship = [first_cord, second_cord]
+
+    if(battleship_position_valid(battleships, battleship) == False):
+        return generate_random_battleship(battleships, size)
+
+    return battleship
+
+def input_battleship_position(battleships, ship_number, size):
+    input_message = ("BATTLESHIP #%d [SIZE: %d]: " % (ship_number, size))
+
+    user_input = get_user_input(input_message)
+    check_input_exit(user_input, "EXETING")
+
+    if(user_input.upper() == "RANDOM"):
+        battleship = generate_random_battleship(battleships, size)
+    else:
+        battleship = user_input.split(" ", 1)
+
+        if(len(battleship) != 2):
+            return input_battleship_position(battleships, ship_number, size)
+
+        battleship[0] = battleship[0].strip()
+        battleship[1] = battleship[1].strip()
+        battleship = generate_inputed_battleship(battleships, ship_number, size, battleship)
+
+    return battleship
 
 def decode_board_coordinates(coordinates):
     for index in range(len(coordinates)):
@@ -129,8 +161,7 @@ def decode_board_coordinate(coordinate):
 ##########################################################################
 def input_socket_information():
     address = get_user_input("ADDRESS: ")
-    if(address.upper() == "EXIT" or address.upper() == "QUIT"):
-        throw_error_quit("quit")
+    check_input_exit(address, "EXCETING ADDRESS")
     try:
         port = int(get_user_input("PORT: "))
     except:
@@ -243,7 +274,11 @@ def extract_protocol_coordinates(protocol):
     return coordinates
 
 def decode_coordinate_object(coordinate):
-    decoded = coordinate.split(",")
+    try:
+        decoded = coordinate.split(",")
+    except:
+        return None
+
     for index in range(len(decoded)):
         decoded[index] = int(decoded[index])
     return decoded
@@ -275,8 +310,7 @@ def mark_protocol_coordinates(off_board, action, coordinates):
 
 def input_attacking_coordinate():
     coordinate = get_user_input("INPUT COORDINATE: ")
-    if(coordinate.upper() == "EXIT" or coordinate.upper() == "QUIT"):
-        throw_error_quit("EXIT")
+    check_input_exit(coordinate, "COORDINATE EXIT")
     coordinate = decode_board_coordinate(coordinate)
     try:
         keyword = off_board[coordinate[0]][coordinate[1]]
@@ -461,15 +495,19 @@ def generate_keyword_markers(filename):
     with open(filename, "r") as file_object:
         file_lines = file_object.read().splitlines()
     for index in range(len(file_lines)):
-        markers.append(file_lines[index].strip().split("="))
+        markers.append(file_lines[index].strip().split("=", 1))
     return markers
 
 def extract_socket_role(arguments):
     try:
-        socket_role = arguments[1].upper()
-        return socket_role
+        socket_role = str(arguments[1]).upper()
     except:
         throw_error_quit("TO FEW ARGUMENTS")
+
+    if(socket_role == "SERVER" or socket_role == "CLIENT"):
+        return socket_role
+
+    throw_error_quit("EITHER SERVER OR CLIENT")
 
 if(__name__ == "__main__"):
     markers = generate_keyword_markers("markers.txt")
